@@ -174,7 +174,13 @@ export function savePipeline(id: string, p: Pipeline): void {
   try {
     const strip = (a: Artifact | null) => (a && a.url.startsWith("data:") ? null : a);
     const slim: Pipeline = structuredClone(p);
-    slim.characters.forEach((c) => (c.image = strip(c.image)));
+    slim.characters.forEach((c) => {
+      c.image = strip(c.image);
+      // ~280KB of base64 each, and only needed to re-mint an evicted id. The
+      // voiceId is what keeps the voice, so dropping the clip under quota
+      // pressure costs recovery, not identity.
+      delete c.voiceClip;
+    });
     if (slim.world) slim.world.map = strip(slim.world.map);
     (slim.locations || []).forEach((location) => (location.image = strip(location.image)));
     for (const b of Object.values(slim.beats)) {
